@@ -223,19 +223,106 @@
       line-height: 1.2;
     }
     .print-btn-area { margin: 18px 0 6px; display: flex; gap: 14px; flex-wrap: wrap; }
+    
+    /* ===== PRINT STYLES - QR ONLY ===== */
     @media print {
-      body { background: white; padding: 8px; }
-      .container { box-shadow: none; padding: 8px; max-width: 100%; }
-      .no-print { display: none !important; }
-      .qr-print-area { border: none; padding: 4px; background: white; }
-      .qr-grid { gap: 8px; justify-content: flex-start; }
-      .qr-card { width: 96px; padding: 4px; border: 1px solid #ccc; }
-      .qr-card .qr-container { width: 76px; height: 76px; }
-      .entry-item, .action-bar, .sync-area, .sub, .photo-upload, .photo-preview { display: none !important; }
-      h1 small { display: none; }
-      #qrArea h4 { display: none; }
-      .print-btn-area { display: none !important; }
+      /* Hide everything except QR area */
+      body { background: white; margin: 0; padding: 0; }
+      
+      /* Hide ALL containers and their children by default */
+      .container, .container * {
+        display: none !important;
+      }
+      
+      /* Only show QR print area and its children */
+      .qr-print-area, .qr-print-area * {
+        display: block !important;
+      }
+      
+      /* Reset QR print area for printing */
+      .qr-print-area {
+        position: fixed !important;
+        top: 0 !important;
+        left: 0 !important;
+        width: 100% !important;
+        height: 100% !important;
+        background: white !important;
+        padding: 20px !important;
+        margin: 0 !important;
+        border: none !important;
+        border-radius: 0 !important;
+        box-shadow: none !important;
+        overflow: visible !important;
+      }
+      
+      /* Hide the heading and print button area in print */
+      .qr-print-area h4, .print-btn-area, .qr-print-area > div:first-child {
+        display: none !important;
+      }
+      
+      /* Show QR grid */
+      .qr-grid {
+        display: flex !important;
+        flex-wrap: wrap !important;
+        gap: 10px !important;
+        justify-content: flex-start !important;
+        margin: 0 !important;
+        padding: 0 !important;
+      }
+      
+      /* QR card styling for print */
+      .qr-card {
+        display: block !important;
+        width: 96px !important;
+        padding: 6px !important;
+        margin: 0 !important;
+        border: 1px solid #ccc !important;
+        border-radius: 4px !important;
+        background: white !important;
+        box-shadow: none !important;
+        page-break-inside: avoid !important;
+      }
+      
+      .qr-card .qr-container {
+        width: 76px !important;
+        height: 76px !important;
+        margin: 0 auto !important;
+      }
+      
+      .qr-card .qr-container canvas,
+      .qr-card .qr-container img {
+        width: 100% !important;
+        height: 100% !important;
+      }
+      
+      .qr-card .qr-label {
+        font-size: 0.5rem !important;
+        font-weight: 600 !important;
+        color: #000 !important;
+        margin-top: 2px !important;
+        text-align: center !important;
+        word-break: break-all !important;
+      }
+      
+      /* Hide the info paragraph */
+      .qr-print-area > p {
+        display: none !important;
+      }
+      
+      /* Force all content to be visible */
+      .qr-print-area, .qr-print-area > div, .qr-print-area > div * {
+        visibility: visible !important;
+      }
+      
+      /* Remove any margins/padding that might break layout */
+      html, body {
+        margin: 0 !important;
+        padding: 0 !important;
+        height: 100% !important;
+        width: 100% !important;
+      }
     }
+
     footer { text-align: center; margin-top: 20px; font-size: 0.8rem; color: #58738b; }
     .loader {
       display: inline-block;
@@ -250,6 +337,15 @@
       0% { transform: rotate(0deg); }
       100% { transform: rotate(360deg); }
     }
+    .error-box {
+      background: #fee;
+      border: 1px solid #fcc;
+      color: #c00;
+      padding: 12px 16px;
+      border-radius: 12px;
+      margin: 10px 0;
+      display: none;
+    }
   </style>
 </head>
 <body>
@@ -260,6 +356,8 @@
     <span class="status-badge" id="entryCounter"><i class="fas fa-database"></i> 0 entries</span>
     <span class="status-badge" id="pendingCount"><i class="fas fa-clock"></i> pending: 0</span>
   </div>
+
+  <div id="errorBox" class="error-box"></div>
 
   <!-- FORM -->
   <form id="specimenForm">
@@ -347,6 +445,7 @@
     const onlineStatus = document.getElementById('onlineStatus');
     const qrGridContainer = document.getElementById('qrGridContainer');
     const saveBtn = document.getElementById('saveBtn');
+    const errorBox = document.getElementById('errorBox');
 
     // ---------- CONFIGURATION ----------
     const CLOUDINARY_CONFIG = {
@@ -356,7 +455,7 @@
     const GOOGLE_SHEETS_URL = 'https://script.google.com/macros/s/AKfycbxV35_CtosMQhjEjBKRm9LzcVar5Xzb0DqJTiK8KcjioXAP5XK_ObVv8LhmU3iIxBPT/exec';
 
     // ---------- state ----------
-    let photoFile = null; // max 1
+    let photoFile = null;
     let entries = [];
     let qrEntries = [];
     let isSaving = false;
@@ -369,26 +468,54 @@
       const d = String(now.getDate()).padStart(2,'0');
       const datePart = `${y}${m}${d}`;
       
-      // Find existing IDs with this date
+      // Get all existing IDs with this date
       const existingIds = entries
         .filter(e => e.id && e.id.startsWith(datePart))
-        .map(e => parseInt(e.id.split('_')[1]))
-        .filter(n => !isNaN(n));
+        .map(e => {
+          const parts = e.id.split('_');
+          if (parts.length === 2) {
+            return parseInt(parts[1]);
+          }
+          return 0;
+        })
+        .filter(n => !isNaN(n) && n > 0);
       
       let nextNum = 1;
       if (existingIds.length > 0) {
-        nextNum = Math.max(...existingIds) + 1;
+        // Find gaps in the sequence
+        existingIds.sort((a, b) => a - b);
+        let foundGap = false;
+        for (let i = 1; i <= existingIds.length + 1; i++) {
+          if (!existingIds.includes(i)) {
+            nextNum = i;
+            foundGap = true;
+            break;
+          }
+        }
+        if (!foundGap) {
+          nextNum = existingIds.length + 1;
+        }
       }
       
       return `${datePart}_${String(nextNum).padStart(3,'0')}`;
     }
 
     function refreshSpecimenId() {
-      specimenIdInput.value = generateSpecimenId();
+      const newId = generateSpecimenId();
+      specimenIdInput.value = newId;
+      return newId;
     }
 
     function setDefaultDate() {
       dateInput.value = new Date().toISOString().split('T')[0];
+    }
+
+    function showError(msg) {
+      errorBox.style.display = 'block';
+      errorBox.textContent = msg;
+      setTimeout(() => {
+        errorBox.style.display = 'none';
+      }, 5000);
     }
 
     // ---------- GPS ----------
@@ -447,11 +574,11 @@
       const lat = latInput.value.trim(), lon = lonInput.value.trim();
       const date = dateInput.value, habitat = habitatInput.value.trim(), collector = collectorInput.value.trim();
       if (!date || !habitat || !collector) {
-        alert('Please fill Date, Habitat and Collector.');
+        showError('Please fill Date, Habitat and Collector.');
         return;
       }
       if (!lat || !lon) {
-        alert('Please get GPS coordinates first (click "get GPS").');
+        showError('Please get GPS coordinates first (click "get GPS").');
         return;
       }
 
@@ -459,19 +586,27 @@
       saveBtn.innerHTML = '<span class="loader"></span> Saving...';
       saveBtn.disabled = true;
 
-      const id = specimenIdInput.value;
+      // Generate a fresh ID
+      const id = refreshSpecimenId();
       
-      // Check if ID already exists
+      // Double-check ID doesn't exist
       if (entries.some(e => e.id === id)) {
-        alert(`ID ${id} already exists! Please refresh the page.`);
-        isSaving = false;
-        saveBtn.innerHTML = '<i class="fas fa-save"></i> Save & Sync';
-        saveBtn.disabled = false;
-        return;
+        // Try one more time with a different ID
+        refreshSpecimenId();
+        const newId = specimenIdInput.value;
+        if (entries.some(e => e.id === newId)) {
+          showError(`ID ${id} already exists! Please refresh the page.`);
+          isSaving = false;
+          saveBtn.innerHTML = '<i class="fas fa-save"></i> Save & Sync';
+          saveBtn.disabled = false;
+          return;
+        }
       }
 
+      const finalId = specimenIdInput.value;
+
       const entry = {
-        id,
+        id: finalId,
         latitude: lat,
         longitude: lon,
         altitude: altInput.value.trim() || 'N/A',
@@ -509,7 +644,7 @@
         renderEntries();
         updateUI();
         
-        showToast(`✅ ${id} saved locally`);
+        showToast(`✅ ${finalId} saved locally`);
 
         // Auto-sync if online
         if (navigator.onLine) {
@@ -520,7 +655,7 @@
 
       } catch (err) {
         console.error('Save error:', err);
-        alert('Error saving entry. Check console.');
+        showError('Error saving entry. Check console for details.');
       } finally {
         isSaving = false;
         saveBtn.innerHTML = '<i class="fas fa-save"></i> Save & Sync';
@@ -601,7 +736,6 @@
       
       for (let entry of pending) {
         await syncSingleEntry(entry);
-        // Small delay to avoid rate limiting
         await new Promise(r => setTimeout(r, 500));
       }
       
@@ -737,12 +871,14 @@
       renderQRCodes();
     }
 
-    // ---------- print QR ----------
+    // ---------- print QR (QR ONLY!) ----------
     function printQrLabels() {
       if (qrEntries.length === 0) {
         alert('No QR codes to print. Save some specimens first.');
         return;
       }
+      
+      // Force print with QR-only CSS
       window.print();
     }
 
@@ -757,7 +893,10 @@
     });
 
     form.addEventListener('submit', (e) => { e.preventDefault(); saveEntry(); });
-    resetBtn.addEventListener('click', (e) => { e.preventDefault(); resetFormAfterSave(); });
+    document.getElementById('resetBtn').addEventListener('click', (e) => { 
+      e.preventDefault(); 
+      resetFormAfterSave(); 
+    });
     document.getElementById('retrySyncBtn').addEventListener('click', retryPendingSyncs);
     document.getElementById('printQrBtn').addEventListener('click', printQrLabels);
     document.getElementById('clearQrBtn').addEventListener('click', () => { 
@@ -771,7 +910,6 @@
     dateInput.addEventListener('change', refreshSpecimenId);
     window.addEventListener('online', () => {
       updateUI();
-      // Auto-sync when coming online
       const pending = entries.filter(e => !e._synced);
       if (pending.length > 0) {
         showToast(`🌐 Online! Syncing ${pending.length} entries...`);
