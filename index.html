@@ -1,0 +1,766 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
+  <title>Specimen · offline collector</title>
+  <!-- Font Awesome Icons (free) -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    body {
+      background: #f4f7fb;
+      font-family: 'Segoe UI', Roboto, system-ui, -apple-system, sans-serif;
+      padding: 20px 16px 40px;
+      color: #1e2b3c;
+    }
+    .container {
+      max-width: 750px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 32px;
+      padding: 24px 20px 32px;
+      box-shadow: 0 12px 30px rgba(0,0,0,0.08);
+    }
+    h1 {
+      font-size: 1.9rem;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 6px;
+      color: #0b2a41;
+    }
+    h1 small {
+      font-size: 0.9rem;
+      font-weight: 400;
+      color: #2c5778;
+      margin-left: auto;
+      background: #eaf0f6;
+      padding: 6px 14px;
+      border-radius: 40px;
+    }
+    .sub {
+      color: #3a5b78;
+      border-bottom: 1px solid #dce5ed;
+      padding-bottom: 18px;
+      margin-bottom: 24px;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .status-badge {
+      background: #eef3f8;
+      padding: 6px 14px;
+      border-radius: 40px;
+      font-size: 0.85rem;
+      font-weight: 500;
+      color: #1f486b;
+    }
+    .status-badge i {
+      margin-right: 6px;
+    }
+    .form-group {
+      margin-bottom: 20px;
+    }
+    label {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-weight: 500;
+      font-size: 0.95rem;
+      color: #1d3a54;
+      margin-bottom: 6px;
+    }
+    label i {
+      width: 20px;
+      color: #2f6b9c;
+    }
+    .input-wrap {
+      position: relative;
+    }
+    input, select, textarea {
+      width: 100%;
+      padding: 14px 16px;
+      border: 1px solid #d0dce8;
+      border-radius: 18px;
+      font-size: 1rem;
+      background: #fafcff;
+      transition: 0.2s;
+      outline: none;
+    }
+    input:focus, select:focus, textarea:focus {
+      border-color: #2d7bb6;
+      box-shadow: 0 0 0 3px rgba(45, 123, 182, 0.15);
+      background: white;
+    }
+    input[readonly] {
+      background: #f0f4fa;
+      color: #1f3b54;
+      font-weight: 500;
+    }
+    .gps-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+    .gps-row .input-wrap {
+      flex: 1 0 120px;
+    }
+    .gps-row .input-wrap input {
+      padding: 12px 14px;
+    }
+    .btn {
+      border: none;
+      background: #e9f0f7;
+      padding: 10px 20px;
+      border-radius: 40px;
+      font-weight: 500;
+      font-size: 0.95rem;
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      color: #1a3d5c;
+      cursor: pointer;
+      transition: 0.2s;
+      border: 1px solid transparent;
+    }
+    .btn-primary {
+      background: #1a5a85;
+      color: white;
+      box-shadow: 0 4px 8px rgba(20, 80, 130, 0.15);
+    }
+    .btn-primary:hover {
+      background: #134a6e;
+      transform: scale(1.01);
+    }
+    .btn-success {
+      background: #1f8b6b;
+      color: white;
+    }
+    .btn-success:hover {
+      background: #16755a;
+    }
+    .btn-danger {
+      background: #c73d4a;
+      color: white;
+    }
+    .btn-danger:hover {
+      background: #ac313d;
+    }
+    .btn-outline {
+      background: transparent;
+      border: 1px solid #b8ccdd;
+    }
+    .btn-outline:hover {
+      background: #eaf1f8;
+    }
+    .action-bar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 14px;
+      margin: 28px 0 18px;
+      justify-content: center;
+    }
+    .photo-upload {
+      border: 2px dashed #b8cbdd;
+      border-radius: 28px;
+      padding: 28px 12px;
+      text-align: center;
+      background: #f9fcff;
+      transition: 0.2s;
+      cursor: pointer;
+    }
+    .photo-upload i {
+      font-size: 2.8rem;
+      color: #3a75a4;
+      display: block;
+      margin-bottom: 6px;
+    }
+    .photo-upload span {
+      font-weight: 500;
+      color: #1a486b;
+    }
+    .photo-preview {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-top: 16px;
+    }
+    .photo-preview img {
+      width: 80px;
+      height: 80px;
+      object-fit: cover;
+      border-radius: 18px;
+      border: 2px solid #dce5ef;
+      background: #f0f5fa;
+    }
+    .photo-preview .file-name {
+      font-size: 0.8rem;
+      color: #2b5a7a;
+      background: #e4eef9;
+      padding: 4px 12px;
+      border-radius: 30px;
+      display: inline-block;
+    }
+    .entries-list {
+      margin-top: 32px;
+      border-top: 1px solid #dce6f0;
+      padding-top: 16px;
+    }
+    .entries-list h3 {
+      font-weight: 600;
+      font-size: 1.1rem;
+      color: #1b3b57;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .entry-item {
+      background: #f7faff;
+      border-radius: 20px;
+      padding: 14px 18px;
+      margin-bottom: 12px;
+      border: 1px solid #deeaf5;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .entry-item .info {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .entry-item .info strong {
+      color: #0a2a44;
+    }
+    .entry-item .info small {
+      color: #3f688b;
+      font-size: 0.8rem;
+    }
+    .entry-item .actions {
+      display: flex;
+      gap: 8px;
+    }
+    .entry-item .actions button {
+      background: transparent;
+      border: none;
+      font-size: 1.1rem;
+      padding: 6px 10px;
+      border-radius: 30px;
+      cursor: pointer;
+      color: #4a6f8f;
+    }
+    .entry-item .actions button:hover {
+      background: #e0ebf5;
+    }
+    .entry-item .actions .del {
+      color: #b13b47;
+    }
+    .sync-area {
+      margin: 18px 0 8px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      align-items: center;
+    }
+    .badge-offline {
+      background: #dfe8f2;
+      padding: 6px 18px;
+      border-radius: 60px;
+      font-size: 0.8rem;
+      font-weight: 500;
+    }
+    .toast {
+      background: #1b3a53;
+      color: white;
+      padding: 12px 18px;
+      border-radius: 40px;
+      font-size: 0.9rem;
+      margin-top: 16px;
+      display: inline-block;
+    }
+    .hidden {
+      display: none !important;
+    }
+    footer {
+      text-align: center;
+      margin-top: 28px;
+      font-size: 0.8rem;
+      color: #58738b;
+    }
+  </style>
+</head>
+<body>
+<div class="container" id="app">
+  <h1>
+    <i class="fas fa-leaf" style="color: #1e7b5b;"></i> Specimen Vault
+    <small>offline</small>
+  </h1>
+  <div class="sub">
+    <span class="status-badge" id="onlineStatus"><i class="fas fa-wifi"></i> online</span>
+    <span id="entryCounter" class="status-badge"><i class="fas fa-database"></i> 0 entries</span>
+  </div>
+
+  <!-- FORM -->
+  <form id="specimenForm" autocomplete="off">
+    <!-- Specimen ID (auto) -->
+    <div class="form-group">
+      <label><i class="fas fa-fingerprint"></i> Specimen ID (auto)</label>
+      <div class="input-wrap">
+        <input type="text" id="specimenId" readonly placeholder="generated ID">
+      </div>
+    </div>
+
+    <!-- GPS row -->
+    <div class="form-group">
+      <label><i class="fas fa-map-pin"></i> GPS (lat, lon, alt)</label>
+      <div class="gps-row">
+        <div class="input-wrap"><input type="text" id="latitude" placeholder="Latitude" readonly></div>
+        <div class="input-wrap"><input type="text" id="longitude" placeholder="Longitude" readonly></div>
+        <div class="input-wrap"><input type="text" id="altitude" placeholder="Altitude (m)" readonly></div>
+      </div>
+      <button type="button" class="btn btn-outline" id="getGpsBtn" style="margin-top:8px;"><i class="fas fa-satellite-dish"></i> get GPS now</button>
+    </div>
+
+    <!-- Date -->
+    <div class="form-group">
+      <label><i class="far fa-calendar-alt"></i> Date</label>
+      <div class="input-wrap"><input type="date" id="specimenDate" required></div>
+    </div>
+
+    <!-- Habitat -->
+    <div class="form-group">
+      <label><i class="fas fa-tree"></i> Habitat</label>
+      <div class="input-wrap"><input type="text" id="habitat" placeholder="e.g. tropical rainforest, grassland" required></div>
+    </div>
+
+    <!-- Collector -->
+    <div class="form-group">
+      <label><i class="fas fa-user-astronaut"></i> Collector</label>
+      <div class="input-wrap"><input type="text" id="collector" placeholder="full name" required></div>
+    </div>
+
+    <!-- Photo upload -->
+    <div class="form-group">
+      <label><i class="fas fa-camera"></i> Photo(s)</label>
+      <div class="photo-upload" id="photoDropArea">
+        <i class="fas fa-cloud-upload-alt"></i>
+        <span>tap to add photos (max 5)</span>
+        <input type="file" id="photoInput" accept="image/*" multiple style="display:none">
+      </div>
+      <div id="photoPreviewContainer" class="photo-preview"></div>
+      <div id="photoNames" style="margin-top:6px; font-size:0.85rem; color:#30658a;"></div>
+    </div>
+
+    <!-- Action buttons -->
+    <div class="action-bar">
+      <button type="submit" class="btn btn-primary" id="saveBtn"><i class="fas fa-save"></i> Save specimen</button>
+      <button type="reset" class="btn btn-outline" id="resetBtn"><i class="fas fa-undo-alt"></i> Reset</button>
+    </div>
+  </form>
+
+  <!-- Sync & delete area -->
+  <div class="sync-area">
+    <button class="btn btn-success" id="syncNowBtn"><i class="fas fa-cloud-upload-alt"></i> Sync all (upload)</button>
+    <span class="badge-offline" id="pendingBadge"><i class="fas fa-hourglass-half"></i> pending: 0</span>
+  </div>
+
+  <!-- stored entries -->
+  <div class="entries-list" id="entriesContainer">
+    <h3><i class="fas fa-list-ul"></i> Stored specimens</h3>
+    <div id="entriesList">
+      <p style="color:#6d8aa8; text-align:center; padding:20px 0;">No entries saved yet.</p>
+    </div>
+  </div>
+  <footer>offline-first · data stored in browser</footer>
+</div>
+
+<script>
+  (function() {
+    "use strict";
+
+    // ----- DOM refs -----
+    const form = document.getElementById('specimenForm');
+    const specimenIdInput = document.getElementById('specimenId');
+    const latInput = document.getElementById('latitude');
+    const lonInput = document.getElementById('longitude');
+    const altInput = document.getElementById('altitude');
+    const dateInput = document.getElementById('specimenDate');
+    const habitatInput = document.getElementById('habitat');
+    const collectorInput = document.getElementById('collector');
+    const photoInput = document.getElementById('photoInput');
+    const photoDropArea = document.getElementById('photoDropArea');
+    const photoPreviewContainer = document.getElementById('photoPreviewContainer');
+    const photoNamesDiv = document.getElementById('photoNames');
+
+    const saveBtn = document.getElementById('saveBtn');
+    const resetBtn = document.getElementById('resetBtn');
+    const syncBtn = document.getElementById('syncNowBtn');
+    const entriesListDiv = document.getElementById('entriesList');
+    const entryCounterSpan = document.getElementById('entryCounter');
+    const pendingBadge = document.getElementById('pendingBadge');
+    const onlineStatus = document.getElementById('onlineStatus');
+
+    // ----- state -----
+    let photoFiles = []; // store File objects (max 5)
+    let entries = [];   // array of entry objects
+    let editingIndex = -1; // not used for delete, but for future edit
+
+    // ----- helper: generate ID (date + 3 digits + name) -----
+    function generateSpecimenId(collectorName = '') {
+      const now = new Date();
+      const y = now.getFullYear();
+      const m = String(now.getMonth()+1).padStart(2,'0');
+      const d = String(now.getDate()).padStart(2,'0');
+      const datePart = `${y}${m}${d}`;
+      // count existing entries for today to get sequence
+      const todayEntries = entries.filter(e => e.id && e.id.startsWith(datePart));
+      let seq = todayEntries.length + 1;
+      let seqStr = String(seq).padStart(3,'0');
+      // if name provided, use first 3 chars of collector (or fallback)
+      let namePart = 'SPM';
+      if (collectorName && collectorName.trim().length > 0) {
+        const clean = collectorName.trim().replace(/\s+/g, '_').toUpperCase();
+        namePart = clean.substring(0, 6); // max 6 chars
+      }
+      return `${datePart}_${seqStr}_${namePart}`;
+    }
+
+    // ----- refresh ID based on current collector & date -----
+    function refreshSpecimenId() {
+      const collector = collectorInput.value.trim() || 'specimen';
+      const id = generateSpecimenId(collector);
+      specimenIdInput.value = id;
+    }
+
+    // ----- GPS (from browser) -----
+    function getGPS() {
+      if (!navigator.geolocation) {
+        alert('Geolocation not supported by this browser.');
+        return;
+      }
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          latInput.value = pos.coords.latitude.toFixed(6);
+          lonInput.value = pos.coords.longitude.toFixed(6);
+          altInput.value = (pos.coords.altitude ? pos.coords.altitude.toFixed(1) : 'N/A');
+        },
+        (err) => {
+          alert('Unable to retrieve GPS. Please allow location or enter manually (if possible).');
+          console.warn('GPS error:', err);
+        },
+        { enableHighAccuracy: true, timeout: 10000 }
+      );
+    }
+
+    // ----- photo handling -----
+    function handlePhotoFiles(files) {
+      const allowed = ['image/png','image/jpeg','image/webp','image/gif','image/jpg'];
+      const newFiles = [];
+      for (let f of files) {
+        if (!allowed.includes(f.type)) continue;
+        if (photoFiles.length + newFiles.length >= 5) break;
+        newFiles.push(f);
+      }
+      if (newFiles.length === 0 && files.length > 0) {
+        alert('Only images (png, jpg, jpeg, webp, gif) allowed. Max 5 photos.');
+        return;
+      }
+      photoFiles = photoFiles.concat(newFiles);
+      renderPhotoPreviews();
+    }
+
+    function renderPhotoPreviews() {
+      photoPreviewContainer.innerHTML = '';
+      photoNamesDiv.innerHTML = '';
+      if (photoFiles.length === 0) {
+        photoPreviewContainer.innerHTML = '<span style="color:#6a8aa5; font-size:0.9rem;">no photos selected</span>';
+        return;
+      }
+      photoFiles.forEach((file, idx) => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const img = document.createElement('img');
+          img.src = e.target.result;
+          img.alt = file.name;
+          img.title = file.name;
+          img.style.width = '80px'; img.style.height = '80px'; img.style.objectFit = 'cover';
+          img.style.borderRadius = '16px';
+          img.style.border = '2px solid #c7dae9';
+          const wrapper = document.createElement('div');
+          wrapper.style.position = 'relative';
+          wrapper.appendChild(img);
+          // small delete icon on photo
+          const del = document.createElement('span');
+          del.innerHTML = '<i class="fas fa-times-circle" style="color:#b13b47; background:white; border-radius:50%; padding:2px;"></i>';
+          del.style.position = 'absolute';
+          del.style.top = '-6px'; del.style.right = '-6px';
+          del.style.cursor = 'pointer';
+          del.style.fontSize = '1.2rem';
+          del.onclick = (e) => {
+            e.stopPropagation();
+            photoFiles.splice(idx, 1);
+            renderPhotoPreviews();
+          };
+          wrapper.appendChild(del);
+          photoPreviewContainer.appendChild(wrapper);
+        };
+        reader.readAsDataURL(file);
+      });
+      const names = photoFiles.map(f => f.name).join(', ');
+      photoNamesDiv.textContent = names ? `📎 ${names}` : '';
+    }
+
+    // ----- save entry (offline) -----
+    function saveEntry() {
+      // validation
+      const lat = latInput.value.trim();
+      const lon = lonInput.value.trim();
+      const date = dateInput.value;
+      const habitat = habitatInput.value.trim();
+      const collector = collectorInput.value.trim();
+      if (!date || !habitat || !collector) {
+        alert('Please fill in Date, Habitat and Collector.');
+        return;
+      }
+      if (!lat || !lon) {
+        alert('Please obtain GPS coordinates (click "get GPS now").');
+        return;
+      }
+
+      // build entry
+      const id = specimenIdInput.value || generateSpecimenId(collector);
+      const entry = {
+        id: id,
+        latitude: lat,
+        longitude: lon,
+        altitude: altInput.value.trim() || 'N/A',
+        date: date,
+        habitat: habitat,
+        collector: collector,
+        photos: photoFiles.map(f => f.name), // store names; actual image data stored as base64 later? we store file refs (only names for offline, but we keep files in memory)
+        photoData: [] // we'll store base64 for persistence
+      };
+
+      // convert photos to base64 for storage (offline)
+      const photoPromises = photoFiles.map((file) => {
+        return new Promise((resolve) => {
+          const reader = new FileReader();
+          reader.onload = (e) => resolve(e.target.result);
+          reader.readAsDataURL(file);
+        });
+      });
+
+      Promise.all(photoPromises).then((base64Array) => {
+        entry.photoData = base64Array;
+        // save to entries array
+        entries.push(entry);
+        // persist to localStorage
+        localStorage.setItem('specimenEntries', JSON.stringify(entries));
+        // reset form (keep GPS, clear photos, keep ID)
+        resetFormAfterSave();
+        renderEntries();
+        updateUI();
+        // show toast
+        showToast(`✅ ${id} saved offline`);
+      }).catch(err => {
+        alert('Error saving photos. Try again.');
+        console.error(err);
+      });
+    }
+
+    function resetFormAfterSave() {
+      // clear photos
+      photoFiles = [];
+      renderPhotoPreviews();
+      photoInput.value = '';
+      // reset other fields except GPS (keep)
+      habitatInput.value = '';
+      collectorInput.value = '';
+      // date set to today
+      setDefaultDate();
+      // refresh ID
+      refreshSpecimenId();
+      // keep GPS (optional)
+    }
+
+    function setDefaultDate() {
+      const today = new Date().toISOString().split('T')[0];
+      dateInput.value = today;
+    }
+
+    // ----- render stored entries -----
+    function renderEntries() {
+      entriesListDiv.innerHTML = '';
+      if (entries.length === 0) {
+        entriesListDiv.innerHTML = '<p style="color:#6d8aa8; text-align:center; padding:20px 0;">No entries saved yet.</p>';
+        return;
+      }
+      // show latest first
+      const sorted = [...entries].reverse();
+      sorted.forEach((e, idx) => {
+        const realIdx = entries.length - 1 - idx;
+        const div = document.createElement('div');
+        div.className = 'entry-item';
+        const info = document.createElement('div');
+        info.className = 'info';
+        let photoCount = e.photoData ? e.photoData.length : 0;
+        info.innerHTML = `
+          <strong>${e.id}</strong>
+          <small>📍 ${e.latitude}, ${e.longitude}  ·  alt: ${e.altitude}  ·  ${e.date}  ·  ${e.habitat}  ·  ${e.collector}  🖼️${photoCount}</small>
+        `;
+        const actions = document.createElement('div');
+        actions.className = 'actions';
+        // delete button
+        const delBtn = document.createElement('button');
+        delBtn.className = 'del';
+        delBtn.innerHTML = '<i class="fas fa-trash-alt"></i>';
+        delBtn.title = 'Delete entry permanently';
+        delBtn.onclick = (ev) => {
+          ev.stopPropagation();
+          if (confirm(`Delete specimen ${e.id} ?`)) {
+            entries.splice(realIdx, 1);
+            localStorage.setItem('specimenEntries', JSON.stringify(entries));
+            renderEntries();
+            updateUI();
+            showToast(`🗑️ Deleted ${e.id}`);
+          }
+        };
+        actions.appendChild(delBtn);
+        div.appendChild(info);
+        div.appendChild(actions);
+        entriesListDiv.appendChild(div);
+      });
+    }
+
+    // ----- sync (simulate upload) -----
+    function syncEntries() {
+      const pending = entries.filter(e => e._synced !== true);
+      if (pending.length === 0) {
+        showToast('✨ No pending entries to sync.');
+        return;
+      }
+      // simulate upload to server
+      if (!navigator.onLine) {
+        alert('You are offline. Please connect to the internet and try again.');
+        return;
+      }
+      // mark all as synced (simulate)
+      pending.forEach(e => e._synced = true);
+      localStorage.setItem('specimenEntries', JSON.stringify(entries));
+      renderEntries();
+      updateUI();
+      showToast(`☁️ Synced ${pending.length} entries.`);
+    }
+
+    // ----- delete all (extra) but we have per-entry delete -----
+
+    // ----- UI update -----
+    function updateUI() {
+      entryCounterSpan.innerHTML = `<i class="fas fa-database"></i> ${entries.length} entries`;
+      const pending = entries.filter(e => !e._synced).length;
+      pendingBadge.innerHTML = `<i class="fas fa-hourglass-half"></i> pending: ${pending}`;
+      // online status
+      if (navigator.onLine) {
+        onlineStatus.innerHTML = '<i class="fas fa-wifi"></i> online';
+        onlineStatus.style.background = '#d7ecdc';
+      } else {
+        onlineStatus.innerHTML = '<i class="fas fa-wifi-slash"></i> offline';
+        onlineStatus.style.background = '#eedbdb';
+      }
+    }
+
+    function showToast(msg) {
+      const old = document.querySelector('.toast');
+      if (old) old.remove();
+      const div = document.createElement('div');
+      div.className = 'toast';
+      div.textContent = msg;
+      document.querySelector('.container').appendChild(div);
+      setTimeout(() => div.remove(), 3000);
+    }
+
+    // ----- reset form (full) -----
+    function resetFullForm() {
+      photoFiles = [];
+      renderPhotoPreviews();
+      photoInput.value = '';
+      habitatInput.value = '';
+      collectorInput.value = '';
+      setDefaultDate();
+      refreshSpecimenId();
+      // GPS kept
+    }
+
+    // ----- load from localStorage -----
+    function loadEntries() {
+      const stored = localStorage.getItem('specimenEntries');
+      if (stored) {
+        try {
+          entries = JSON.parse(stored);
+          // ensure all entries have _synced flag
+          entries = entries.map(e => ({ ...e, _synced: e._synced || false }));
+        } catch(e) { entries = []; }
+      } else {
+        entries = [];
+      }
+      renderEntries();
+      updateUI();
+    }
+
+    // ----- event listeners -----
+    // GPS button
+    document.getElementById('getGpsBtn').addEventListener('click', getGPS);
+
+    // photo drop / click
+    photoDropArea.addEventListener('click', () => photoInput.click());
+    photoInput.addEventListener('change', (e) => {
+      if (e.target.files.length) {
+        handlePhotoFiles(e.target.files);
+      }
+      photoInput.value = ''; // allow re-upload same
+    });
+
+    // form submit
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      saveEntry();
+    });
+
+    // reset
+    resetBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      resetFullForm();
+    });
+
+    // sync
+    syncBtn.addEventListener('click', syncEntries);
+
+    // auto generate ID on collector change
+    collectorInput.addEventListener('input', refreshSpecimenId);
+    dateInput.addEventListener('change', refreshSpecimenId);
+
+    // online/offline detection
+    window.addEventListener('online', updateUI);
+    window.addEventListener('offline', updateUI);
+
+    // init
+    setDefaultDate();
+    refreshSpecimenId();
+    loadEntries();
+    // try gps on load
+    getGPS();
+
+    // extra: if gps fails, user can try again
+    console.log('Specimen collector ready.');
+  })();
+</script>
+</body>
+</html>
