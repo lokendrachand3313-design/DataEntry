@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
-  <title>Specimen Vault · Cloudinary + Google Sheets</title>
+  <title>Specimen Vault · Auto Sync</title>
   <!-- Font Awesome & QRCode library -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
@@ -57,6 +57,7 @@
       font-weight: 500;
       color: #1f4b6b;
     }
+    .status-badge i { margin-right: 6px; }
     .form-group { margin-bottom: 18px; }
     label {
       display: flex;
@@ -93,10 +94,10 @@
     .btn {
       border: none;
       background: #e9f0f7;
-      padding: 10px 20px;
+      padding: 10px 24px;
       border-radius: 40px;
       font-weight: 500;
-      font-size: 0.9rem;
+      font-size: 0.95rem;
       display: inline-flex;
       align-items: center;
       gap: 10px;
@@ -109,12 +110,10 @@
     .btn-primary:hover { background: #134a6e; transform: scale(1.01); }
     .btn-success { background: #1f8b6b; color: white; }
     .btn-success:hover { background: #16755a; }
-    .btn-danger { background: #c73d4a; color: white; }
-    .btn-danger:hover { background: #ac313d; }
     .btn-outline { background: transparent; border: 1px solid #b8ccdd; }
     .btn-outline:hover { background: #eaf1f8; }
-    .btn-cloud { background: #0a4b7a; color: white; }
-    .btn-cloud:hover { background: #083a5f; }
+    .btn-danger { background: #c73d4a; color: white; }
+    .btn-danger:hover { background: #ac313d; }
     .action-bar {
       display: flex;
       flex-wrap: wrap;
@@ -125,17 +124,18 @@
     .photo-upload {
       border: 2px dashed #b8cbdd;
       border-radius: 28px;
-      padding: 24px 12px;
+      padding: 20px 12px;
       text-align: center;
       background: #f9fcff;
       transition: 0.2s;
       cursor: pointer;
     }
     .photo-upload i { font-size: 2.4rem; color: #3a75a4; display: block; margin-bottom: 4px; }
+    .photo-upload span { color: #2a5f88; font-weight: 500; }
     .photo-preview { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 14px; }
     .photo-preview .thumb {
       position: relative;
-      width: 72px; height: 72px;
+      width: 80px; height: 80px;
       border-radius: 16px;
       border: 2px solid #dce5ef;
       background: #f0f5fa;
@@ -149,7 +149,7 @@
       border-radius: 50%;
       cursor: pointer;
       color: #b13b47;
-      font-size: 1rem;
+      font-size: 1.1rem;
       padding: 2px;
     }
     .entries-list { margin-top: 28px; border-top: 1px solid #dce6f0; padding-top: 16px; }
@@ -168,6 +168,9 @@
     .entry-item .info { display: flex; flex-direction: column; gap: 2px; }
     .entry-item .info strong { color: #0a2a44; font-size: 0.95rem; }
     .entry-item .info small { color: #3f688b; font-size: 0.75rem; }
+    .entry-item .info .sync-status { font-size: 0.7rem; font-weight: 600; }
+    .entry-item .info .sync-status.synced { color: #1f8b6b; }
+    .entry-item .info .sync-status.pending { color: #c73d4a; }
     .entry-item .actions { display: flex; gap: 6px; }
     .entry-item .actions button {
       background: transparent; border: none; font-size: 1rem;
@@ -183,8 +186,9 @@
     .toast {
       background: #1b3a53; color: white; padding: 10px 20px; border-radius: 40px;
       font-size: 0.9rem; margin-top: 14px; display: inline-block;
+      position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+      z-index: 999; box-shadow: 0 4px 12px rgba(0,0,0,0.2);
     }
-    .hidden { display: none !important; }
     .qr-print-area {
       margin-top: 24px;
       background: #f8faff;
@@ -229,23 +233,39 @@
       .qr-card .qr-container { width: 76px; height: 76px; }
       .entry-item, .action-bar, .sync-area, .sub, .photo-upload, .photo-preview { display: none !important; }
       h1 small { display: none; }
+      #qrArea h4 { display: none; }
+      .print-btn-area { display: none !important; }
     }
     footer { text-align: center; margin-top: 20px; font-size: 0.8rem; color: #58738b; }
+    .loader {
+      display: inline-block;
+      width: 16px;
+      height: 16px;
+      border: 2px solid #f3f3f3;
+      border-radius: 50%;
+      border-top: 2px solid #1a5a85;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
   </style>
 </head>
 <body>
 <div class="container" id="app">
-  <h1><i class="fas fa-flask" style="color: #1e7b5b;"></i> Specimen Vault <small><i class="fas fa-cloud-upload-alt"></i> Cloudinary + Sheets</small></h1>
+  <h1><i class="fas fa-flask" style="color: #1e7b5b;"></i> Specimen Vault <small><i class="fas fa-cloud-upload-alt"></i> Auto Sync</small></h1>
   <div class="sub">
     <span class="status-badge" id="onlineStatus"><i class="fas fa-wifi"></i> online</span>
     <span class="status-badge" id="entryCounter"><i class="fas fa-database"></i> 0 entries</span>
+    <span class="status-badge" id="pendingCount"><i class="fas fa-clock"></i> pending: 0</span>
   </div>
 
   <!-- FORM -->
   <form id="specimenForm">
     <div class="form-group">
       <label><i class="fas fa-fingerprint"></i> Specimen ID (auto)</label>
-      <input type="text" id="specimenId" readonly placeholder="generated ID">
+      <input type="text" id="specimenId" readonly placeholder="20260620_001">
     </div>
     <div class="form-group">
       <label><i class="fas fa-map-pin"></i> GPS (lat, lon, alt)</label>
@@ -269,27 +289,21 @@
       <input type="text" id="collector" placeholder="full name" required>
     </div>
     <div class="form-group">
-      <label><i class="fas fa-camera"></i> Photo(s) max 3</label>
+      <label><i class="fas fa-camera"></i> Photo (max 1)</label>
       <div class="photo-upload" id="photoDropArea">
         <i class="fas fa-cloud-upload-alt"></i>
-        <span>tap to add photos</span>
-        <input type="file" id="photoInput" accept="image/*" multiple style="display:none">
+        <span>tap to add one photo</span>
+        <input type="file" id="photoInput" accept="image/*" style="display:none">
       </div>
       <div id="photoPreviewContainer" class="photo-preview"></div>
     </div>
 
     <div class="action-bar">
-      <button type="submit" class="btn btn-primary" id="saveBtn"><i class="fas fa-save"></i> Save</button>
+      <button type="submit" class="btn btn-primary" id="saveBtn"><i class="fas fa-save"></i> Save & Sync</button>
       <button type="reset" class="btn btn-outline" id="resetBtn"><i class="fas fa-undo-alt"></i> Reset</button>
+      <button type="button" class="btn btn-success" id="retrySyncBtn"><i class="fas fa-sync-alt"></i> Retry Pending</button>
     </div>
   </form>
-
-  <!-- Sync & export -->
-  <div class="sync-area">
-    <button class="btn btn-success" id="syncNowBtn"><i class="fas fa-cloud-upload-alt"></i> Sync to Sheets</button>
-    <button class="btn btn-cloud" id="uploadPhotosBtn"><i class="fas fa-images"></i> Upload photos to Cloudinary</button>
-    <span class="badge-offline" id="pendingBadge"><i class="fas fa-hourglass-half"></i> pending: 0</span>
-  </div>
 
   <!-- QR Code print area -->
   <div class="qr-print-area no-print" id="qrArea">
@@ -309,7 +323,7 @@
     <h3><i class="fas fa-list-ul"></i> Stored specimens</h3>
     <div id="entriesList"><p style="color:#6d8aa8; text-align:center; padding:20px 0;">No entries saved.</p></div>
   </div>
-  <footer>offline-first · data in localStorage · sync to Google Sheets · photos to Cloudinary</footer>
+  <footer>offline-first · auto-sync when online · data in localStorage</footer>
 </div>
 
 <script>
@@ -329,42 +343,48 @@
     const photoPreviewContainer = document.getElementById('photoPreviewContainer');
     const entriesListDiv = document.getElementById('entriesList');
     const entryCounterSpan = document.getElementById('entryCounter');
-    const pendingBadge = document.getElementById('pendingBadge');
+    const pendingCountSpan = document.getElementById('pendingCount');
     const onlineStatus = document.getElementById('onlineStatus');
     const qrGridContainer = document.getElementById('qrGridContainer');
+    const saveBtn = document.getElementById('saveBtn');
 
     // ---------- CONFIGURATION ----------
-    // Cloudinary - YOUR cloud name is already configured
     const CLOUDINARY_CONFIG = {
       cloudName: 'dmvqby8np',
-      uploadPreset: 'ml_default'  // Change this to your upload preset if different
+      uploadPreset: 'ml_default'
     };
-
-    // Google Sheets - YOUR Apps Script URL is already configured
     const GOOGLE_SHEETS_URL = 'https://script.google.com/macros/s/AKfycbxV35_CtosMQhjEjBKRm9LzcVar5Xzb0DqJTiK8KcjioXAP5XK_ObVv8LhmU3iIxBPT/exec';
 
     // ---------- state ----------
-    let photoFiles = []; // max 3
+    let photoFile = null; // max 1
     let entries = [];
     let qrEntries = [];
+    let isSaving = false;
 
     // ---------- helpers ----------
-    function generateSpecimenId(collector = '') {
+    function generateSpecimenId() {
       const now = new Date();
       const y = now.getFullYear();
       const m = String(now.getMonth()+1).padStart(2,'0');
       const d = String(now.getDate()).padStart(2,'0');
       const datePart = `${y}${m}${d}`;
-      const todayEntries = entries.filter(e => e.id && e.id.startsWith(datePart));
-      let seq = todayEntries.length + 1;
-      let seqStr = String(seq).padStart(3,'0');
-      let namePart = collector.trim().replace(/\s+/g, '_').toUpperCase().substring(0,6) || 'SPM';
-      return `${datePart}_${seqStr}_${namePart}`;
+      
+      // Find existing IDs with this date
+      const existingIds = entries
+        .filter(e => e.id && e.id.startsWith(datePart))
+        .map(e => parseInt(e.id.split('_')[1]))
+        .filter(n => !isNaN(n));
+      
+      let nextNum = 1;
+      if (existingIds.length > 0) {
+        nextNum = Math.max(...existingIds) + 1;
+      }
+      
+      return `${datePart}_${String(nextNum).padStart(3,'0')}`;
     }
 
     function refreshSpecimenId() {
-      const col = collectorInput.value.trim() || 'specimen';
-      specimenIdInput.value = generateSpecimenId(col);
+      specimenIdInput.value = generateSpecimenId();
     }
 
     function setDefaultDate() {
@@ -385,84 +405,213 @@
       );
     }
 
-    // ---------- photos ----------
-    function handlePhotoFiles(files) {
+    // ---------- photos (max 1) ----------
+    function handlePhotoFile(file) {
+      if (!file) return;
       const allowed = ['image/png','image/jpeg','image/webp','image/gif','image/jpg'];
-      const newFiles = [];
-      for (let f of files) {
-        if (!allowed.includes(f.type)) continue;
-        if (photoFiles.length + newFiles.length >= 3) break;
-        newFiles.push(f);
-      }
-      if (newFiles.length === 0 && files.length > 0) alert('Only images, max 3 photos.');
-      photoFiles = photoFiles.concat(newFiles);
-      renderPhotoPreviews();
-    }
-
-    function renderPhotoPreviews() {
-      photoPreviewContainer.innerHTML = '';
-      if (photoFiles.length === 0) {
-        photoPreviewContainer.innerHTML = '<span style="color:#6a8aa5; font-size:0.85rem;">no photos</span>';
+      if (!allowed.includes(file.type)) {
+        alert('Please select an image file (png, jpg, jpeg, webp, gif)');
         return;
       }
-      photoFiles.forEach((file, idx) => {
-        const reader = new FileReader();
-        reader.onload = (e) => {
-          const div = document.createElement('div');
-          div.className = 'thumb';
-          const img = document.createElement('img');
-          img.src = e.target.result;
-          div.appendChild(img);
-          const del = document.createElement('span');
-          del.className = 'del-photo';
-          del.innerHTML = '<i class="fas fa-times-circle"></i>';
-          del.onclick = (ev) => { ev.stopPropagation(); photoFiles.splice(idx,1); renderPhotoPreviews(); };
-          div.appendChild(del);
-          photoPreviewContainer.appendChild(div);
-        };
-        reader.readAsDataURL(file);
-      });
+      photoFile = file;
+      renderPhotoPreview();
     }
 
-    // ---------- save entry (offline) ----------
-    function saveEntry() {
+    function renderPhotoPreview() {
+      photoPreviewContainer.innerHTML = '';
+      if (!photoFile) {
+        photoPreviewContainer.innerHTML = '<span style="color:#6a8aa5; font-size:0.85rem;">no photo</span>';
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const div = document.createElement('div');
+        div.className = 'thumb';
+        const img = document.createElement('img');
+        img.src = e.target.result;
+        div.appendChild(img);
+        const del = document.createElement('span');
+        del.className = 'del-photo';
+        del.innerHTML = '<i class="fas fa-times-circle"></i>';
+        del.onclick = () => { photoFile = null; renderPhotoPreview(); };
+        div.appendChild(del);
+        photoPreviewContainer.appendChild(div);
+      };
+      reader.readAsDataURL(photoFile);
+    }
+
+    // ---------- save entry ----------
+    async function saveEntry() {
+      if (isSaving) return;
+      
       const lat = latInput.value.trim(), lon = lonInput.value.trim();
       const date = dateInput.value, habitat = habitatInput.value.trim(), collector = collectorInput.value.trim();
-      if (!date || !habitat || !collector) return alert('Fill Date, Habitat and Collector.');
-      if (!lat || !lon) return alert('Get GPS coordinates first.');
+      if (!date || !habitat || !collector) {
+        alert('Please fill Date, Habitat and Collector.');
+        return;
+      }
+      if (!lat || !lon) {
+        alert('Please get GPS coordinates first (click "get GPS").');
+        return;
+      }
 
-      const id = specimenIdInput.value || generateSpecimenId(collector);
+      isSaving = true;
+      saveBtn.innerHTML = '<span class="loader"></span> Saving...';
+      saveBtn.disabled = true;
+
+      const id = specimenIdInput.value;
+      
+      // Check if ID already exists
+      if (entries.some(e => e.id === id)) {
+        alert(`ID ${id} already exists! Please refresh the page.`);
+        isSaving = false;
+        saveBtn.innerHTML = '<i class="fas fa-save"></i> Save & Sync';
+        saveBtn.disabled = false;
+        return;
+      }
+
       const entry = {
-        id, latitude: lat, longitude: lon, altitude: altInput.value.trim() || 'N/A',
-        date, habitat, collector,
-        photoData: [], photoCloudinaryUrls: [],
-        _synced: false, _photosUploaded: false,
+        id,
+        latitude: lat,
+        longitude: lon,
+        altitude: altInput.value.trim() || 'N/A',
+        date,
+        habitat,
+        collector,
+        photoData: null,
+        photoCloudinaryUrl: null,
+        _synced: false,
+        _photosUploaded: false,
         timestamp: new Date().toISOString()
       };
 
-      const promises = photoFiles.map(f => new Promise((resolve) => {
-        const reader = new FileReader();
-        reader.onload = (e) => resolve(e.target.result);
-        reader.readAsDataURL(f);
-      }));
+      try {
+        // Read photo if exists
+        if (photoFile) {
+          const base64 = await new Promise((resolve) => {
+            const reader = new FileReader();
+            reader.onload = (e) => resolve(e.target.result);
+            reader.readAsDataURL(photoFile);
+          });
+          entry.photoData = base64;
+        }
 
-      Promise.all(promises).then((base64Array) => {
-        entry.photoData = base64Array;
+        // Save locally
         entries.push(entry);
         localStorage.setItem('specimenEntries', JSON.stringify(entries));
-        // add to QR list
+        
+        // Add to QR
         qrEntries.push(entry.id);
         renderQRCodes();
+        
+        // Reset form
         resetFormAfterSave();
         renderEntries();
         updateUI();
-        showToast(`✅ ${id} saved offline`);
-      }).catch(err => { alert('Error saving photos.'); console.error(err); });
+        
+        showToast(`✅ ${id} saved locally`);
+
+        // Auto-sync if online
+        if (navigator.onLine) {
+          await syncSingleEntry(entry);
+        } else {
+          showToast('📡 Offline - will sync when online');
+        }
+
+      } catch (err) {
+        console.error('Save error:', err);
+        alert('Error saving entry. Check console.');
+      } finally {
+        isSaving = false;
+        saveBtn.innerHTML = '<i class="fas fa-save"></i> Save & Sync';
+        saveBtn.disabled = false;
+      }
     }
 
+    // ---------- sync single entry ----------
+    async function syncSingleEntry(entry) {
+      try {
+        // Upload photo to Cloudinary first
+        if (entry.photoData && !entry._photosUploaded) {
+          const url = await uploadPhotoToCloudinary(entry.photoData);
+          if (url) {
+            entry.photoCloudinaryUrl = url;
+            entry._photosUploaded = true;
+          }
+        }
+
+        // Sync to Google Sheets
+        const response = await fetch(GOOGLE_SHEETS_URL, {
+          method: 'POST',
+          mode: 'cors',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify([entry])
+        });
+
+        if (response.ok) {
+          entry._synced = true;
+          localStorage.setItem('specimenEntries', JSON.stringify(entries));
+          renderEntries();
+          updateUI();
+          showToast(`☁️ ${entry.id} synced to Cloudinary & Sheets`);
+          return true;
+        } else {
+          throw new Error('Sync failed');
+        }
+      } catch (err) {
+        console.warn('Sync failed for', entry.id, err);
+        showToast(`⚠️ ${entry.id} saved locally but sync failed`);
+        return false;
+      }
+    }
+
+    // ---------- upload photo to Cloudinary ----------
+    async function uploadPhotoToCloudinary(base64Data) {
+      try {
+        const formData = new FormData();
+        formData.append('file', base64Data);
+        formData.append('upload_preset', CLOUDINARY_CONFIG.uploadPreset);
+        
+        const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CONFIG.cloudName}/image/upload`, {
+          method: 'POST',
+          body: formData
+        });
+        const data = await res.json();
+        return data.secure_url || null;
+      } catch (err) {
+        console.warn('Cloudinary upload failed:', err);
+        return null;
+      }
+    }
+
+    // ---------- retry pending syncs ----------
+    async function retryPendingSyncs() {
+      const pending = entries.filter(e => !e._synced);
+      if (pending.length === 0) {
+        showToast('No pending entries to sync.');
+        return;
+      }
+
+      if (!navigator.onLine) {
+        alert('You are offline. Please connect to internet.');
+        return;
+      }
+
+      showToast(`🔄 Syncing ${pending.length} pending entries...`);
+      
+      for (let entry of pending) {
+        await syncSingleEntry(entry);
+        // Small delay to avoid rate limiting
+        await new Promise(r => setTimeout(r, 500));
+      }
+      
+      showToast(`✅ Sync complete!`);
+    }
+
+    // ---------- reset form ----------
     function resetFormAfterSave() {
-      photoFiles = [];
-      renderPhotoPreviews();
+      photoFile = null;
+      renderPhotoPreview();
       photoInput.value = '';
       habitatInput.value = '';
       collectorInput.value = '';
@@ -484,10 +633,15 @@
         div.className = 'entry-item';
         const info = document.createElement('div');
         info.className = 'info';
-        const photoCount = e.photoData ? e.photoData.length : 0;
-        const cloud = e.photoCloudinaryUrls && e.photoCloudinaryUrls.length ? '☁️' : '';
+        const hasPhoto = e.photoData ? '📷' : '';
+        const cloudIcon = e.photoCloudinaryUrl ? '☁️' : '';
+        const syncStatus = e._synced 
+          ? '<span class="sync-status synced">✅ Synced</span>' 
+          : '<span class="sync-status pending">⏳ Pending</span>';
+        
         info.innerHTML = `<strong>${e.id}</strong>
-          <small>📍 ${e.latitude}, ${e.longitude}  ·  alt: ${e.altitude}  ·  ${e.date}  ·  ${e.habitat}  ·  ${e.collector}  🖼️${photoCount} ${cloud}</small>`;
+          <small>📍 ${e.latitude}, ${e.longitude}  ·  alt: ${e.altitude}  ·  ${e.date}  ·  ${e.habitat}  ·  ${e.collector}  ${hasPhoto} ${cloudIcon} ${syncStatus}</small>`;
+        
         const actions = document.createElement('div');
         actions.className = 'actions';
         const delBtn = document.createElement('button');
@@ -544,88 +698,11 @@
       });
     }
 
-    // ---------- Cloudinary upload ----------
-    async function uploadPhotosToCloudinary() {
-      const pending = entries.filter(e => !e._photosUploaded && e.photoData && e.photoData.length > 0);
-      if (pending.length === 0) { showToast('No new photos to upload.'); return; }
-      if (!navigator.onLine) { alert('You are offline. Connect to internet.'); return; }
-
-      for (let entry of pending) {
-        const urls = [];
-        for (let base64 of entry.photoData) {
-          try {
-            const formData = new FormData();
-            formData.append('file', base64);
-            formData.append('upload_preset', CLOUDINARY_CONFIG.uploadPreset);
-            const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CONFIG.cloudName}/image/upload`, {
-              method: 'POST',
-              body: formData
-            });
-            const data = await res.json();
-            if (data.secure_url) {
-              urls.push(data.secure_url);
-              console.log('✅ Uploaded to Cloudinary:', data.secure_url);
-            }
-          } catch(e) { 
-            console.warn('Cloudinary upload failed for one photo', e);
-            showToast('❌ Some photos failed to upload');
-          }
-        }
-        if (urls.length) {
-          entry.photoCloudinaryUrls = urls;
-          entry._photosUploaded = true;
-        }
-      }
-      localStorage.setItem('specimenEntries', JSON.stringify(entries));
-      renderEntries();
-      updateUI();
-      showToast(`☁️ Uploaded photos to Cloudinary (${pending.length} specimens)`);
-    }
-
-    // ---------- Google Sheets sync ----------
-    async function syncToGoogleSheets() {
-      const pending = entries.filter(e => !e._synced);
-      if (pending.length === 0) { showToast('All entries already synced.'); return; }
-      if (!navigator.onLine) { alert('You are offline. Connect to internet.'); return; }
-
-      try {
-        const response = await fetch(GOOGLE_SHEETS_URL, {
-          method: 'POST',
-          mode: 'cors',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(pending)
-        });
-
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-
-        const result = await response.json();
-        console.log('Sync result:', result);
-
-        if (result.success) {
-          pending.forEach(e => e._synced = true);
-          localStorage.setItem('specimenEntries', JSON.stringify(entries));
-          renderEntries();
-          updateUI();
-          showToast(`✅ Synced ${pending.length} entries to Google Sheets.`);
-        } else {
-          throw new Error(result.error || 'Unknown error');
-        }
-      } catch(e) {
-        alert('Sync failed. Check console for details.');
-        console.error('Sync error:', e);
-        showToast('❌ Sync failed. Check console.');
-      }
-    }
-
     // ---------- UI update ----------
     function updateUI() {
       entryCounterSpan.innerHTML = `<i class="fas fa-database"></i> ${entries.length} entries`;
       const pending = entries.filter(e => !e._synced).length;
-      pendingBadge.innerHTML = `<i class="fas fa-hourglass-half"></i> pending: ${pending}`;
+      pendingCountSpan.innerHTML = `<i class="fas fa-clock"></i> pending: ${pending}`;
       onlineStatus.innerHTML = navigator.onLine ? '<i class="fas fa-wifi"></i> online' : '<i class="fas fa-wifi-slash"></i> offline';
       onlineStatus.style.background = navigator.onLine ? '#d7ecdc' : '#eedbdb';
     }
@@ -636,8 +713,8 @@
       const div = document.createElement('div');
       div.className = 'toast';
       div.textContent = msg;
-      document.querySelector('.container').appendChild(div);
-      setTimeout(() => div.remove(), 3000);
+      document.body.appendChild(div);
+      setTimeout(() => div.remove(), 4000);
     }
 
     // ---------- load data ----------
@@ -650,7 +727,7 @@
             ...e, 
             _synced: e._synced || false, 
             _photosUploaded: e._photosUploaded || false,
-            photoCloudinaryUrls: e.photoCloudinaryUrls || []
+            photoCloudinaryUrl: e.photoCloudinaryUrl || null
           })); 
         } catch(e) { entries = []; }
       } else entries = [];
@@ -662,25 +739,45 @@
 
     // ---------- print QR ----------
     function printQrLabels() {
+      if (qrEntries.length === 0) {
+        alert('No QR codes to print. Save some specimens first.');
+        return;
+      }
       window.print();
     }
 
     // ---------- event listeners ----------
     document.getElementById('getGpsBtn').addEventListener('click', getGPS);
     photoDropArea.addEventListener('click', () => photoInput.click());
-    photoInput.addEventListener('change', (e) => { if (e.target.files.length) handlePhotoFiles(e.target.files); photoInput.value = ''; });
+    photoInput.addEventListener('change', (e) => { 
+      if (e.target.files.length) {
+        handlePhotoFile(e.target.files[0]);
+      }
+      photoInput.value = '';
+    });
 
     form.addEventListener('submit', (e) => { e.preventDefault(); saveEntry(); });
     resetBtn.addEventListener('click', (e) => { e.preventDefault(); resetFormAfterSave(); });
-
-    document.getElementById('syncNowBtn').addEventListener('click', syncToGoogleSheets);
-    document.getElementById('uploadPhotosBtn').addEventListener('click', uploadPhotosToCloudinary);
+    document.getElementById('retrySyncBtn').addEventListener('click', retryPendingSyncs);
     document.getElementById('printQrBtn').addEventListener('click', printQrLabels);
-    document.getElementById('clearQrBtn').addEventListener('click', () => { if(confirm('Clear all QR labels?')) { qrEntries = []; renderQRCodes(); } });
+    document.getElementById('clearQrBtn').addEventListener('click', () => { 
+      if(confirm('Clear all QR labels?')) { 
+        qrEntries = []; 
+        renderQRCodes(); 
+      } 
+    });
 
     collectorInput.addEventListener('input', refreshSpecimenId);
     dateInput.addEventListener('change', refreshSpecimenId);
-    window.addEventListener('online', updateUI);
+    window.addEventListener('online', () => {
+      updateUI();
+      // Auto-sync when coming online
+      const pending = entries.filter(e => !e._synced);
+      if (pending.length > 0) {
+        showToast(`🌐 Online! Syncing ${pending.length} entries...`);
+        retryPendingSyncs();
+      }
+    });
     window.addEventListener('offline', updateUI);
 
     // init
