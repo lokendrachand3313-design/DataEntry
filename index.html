@@ -226,73 +226,73 @@
     
     /* ===== PRINT STYLES - QR ONLY ===== */
     @media print {
-      /* Hide everything except QR area */
-      body { background: white; margin: 0; padding: 0; }
-      
-      /* Hide ALL containers and their children by default */
-      .container, .container * {
+      /* Hide everything by default */
+      html, body, .container, .container * {
         display: none !important;
+        visibility: hidden !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        height: 0 !important;
+        width: 0 !important;
+        overflow: hidden !important;
       }
       
-      /* Only show QR print area and its children */
-      .qr-print-area, .qr-print-area * {
+      /* Show ONLY the QR cards */
+      .qr-grid, .qr-grid * {
         display: block !important;
+        visibility: visible !important;
+        height: auto !important;
+        width: auto !important;
+        overflow: visible !important;
+        position: static !important;
       }
       
-      /* Reset QR print area for printing */
-      .qr-print-area {
+      /* Make the QR grid visible */
+      .qr-grid {
+        display: flex !important;
+        flex-wrap: wrap !important;
+        gap: 10px !important;
+        justify-content: flex-start !important;
+        align-items: flex-start !important;
+        padding: 10px !important;
+        margin: 0 !important;
         position: fixed !important;
         top: 0 !important;
         left: 0 !important;
         width: 100% !important;
         height: 100% !important;
         background: white !important;
-        padding: 20px !important;
-        margin: 0 !important;
-        border: none !important;
-        border-radius: 0 !important;
-        box-shadow: none !important;
-        overflow: visible !important;
-      }
-      
-      /* Hide the heading and print button area in print */
-      .qr-print-area h4, .print-btn-area, .qr-print-area > div:first-child {
-        display: none !important;
-      }
-      
-      /* Show QR grid */
-      .qr-grid {
-        display: flex !important;
-        flex-wrap: wrap !important;
-        gap: 10px !important;
-        justify-content: flex-start !important;
-        margin: 0 !important;
-        padding: 0 !important;
+        visibility: visible !important;
       }
       
       /* QR card styling for print */
       .qr-card {
         display: block !important;
-        width: 96px !important;
+        width: 100px !important;
         padding: 6px !important;
-        margin: 0 !important;
+        margin: 4px !important;
         border: 1px solid #ccc !important;
         border-radius: 4px !important;
         background: white !important;
         box-shadow: none !important;
         page-break-inside: avoid !important;
+        visibility: visible !important;
+        height: auto !important;
+        flex-shrink: 0 !important;
       }
       
       .qr-card .qr-container {
-        width: 76px !important;
-        height: 76px !important;
+        width: 80px !important;
+        height: 80px !important;
         margin: 0 auto !important;
+        visibility: visible !important;
       }
       
       .qr-card .qr-container canvas,
       .qr-card .qr-container img {
         width: 100% !important;
         height: 100% !important;
+        visibility: visible !important;
       }
       
       .qr-card .qr-label {
@@ -302,24 +302,19 @@
         margin-top: 2px !important;
         text-align: center !important;
         word-break: break-all !important;
-      }
-      
-      /* Hide the info paragraph */
-      .qr-print-area > p {
-        display: none !important;
-      }
-      
-      /* Force all content to be visible */
-      .qr-print-area, .qr-print-area > div, .qr-print-area > div * {
         visibility: visible !important;
       }
       
-      /* Remove any margins/padding that might break layout */
-      html, body {
-        margin: 0 !important;
-        padding: 0 !important;
-        height: 100% !important;
-        width: 100% !important;
+      /* Force all QR content to be visible */
+      .qr-grid .qr-card,
+      .qr-grid .qr-card * {
+        visibility: visible !important;
+        display: block !important;
+      }
+      
+      /* Remove all other elements from print */
+      .no-print {
+        display: none !important;
       }
     }
 
@@ -482,18 +477,12 @@
       
       let nextNum = 1;
       if (existingIds.length > 0) {
-        // Find gaps in the sequence
         existingIds.sort((a, b) => a - b);
-        let foundGap = false;
         for (let i = 1; i <= existingIds.length + 1; i++) {
           if (!existingIds.includes(i)) {
             nextNum = i;
-            foundGap = true;
             break;
           }
-        }
-        if (!foundGap) {
-          nextNum = existingIds.length + 1;
         }
       }
       
@@ -591,7 +580,6 @@
       
       // Double-check ID doesn't exist
       if (entries.some(e => e.id === id)) {
-        // Try one more time with a different ID
         refreshSpecimenId();
         const newId = specimenIdInput.value;
         if (entries.some(e => e.id === newId)) {
@@ -878,8 +866,17 @@
         return;
       }
       
+      // Store original title
+      const originalTitle = document.title;
+      document.title = 'QR Labels - Specimen Vault';
+      
       // Force print with QR-only CSS
       window.print();
+      
+      // Restore title after print
+      setTimeout(() => {
+        document.title = originalTitle;
+      }, 1000);
     }
 
     // ---------- event listeners ----------
